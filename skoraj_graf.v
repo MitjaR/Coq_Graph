@@ -1,5 +1,9 @@
 (** An attempt to formalize graphs. *)
 
+Require Import Arith.
+Require Import Psatz.
+Require Import Omega.
+
 (** Lemma is something that should be proved by others *)
 
 (** In order to avoid the intricacies of constructive mathematics,
@@ -21,6 +25,13 @@ Structure Graph := {
   E_symmetric : all x : V, all y : V, (E x y -> E y x)
 }.
 
+Structure Graph' := {
+  V' :> nat ; (* The number of vertices. So the vertices are numbers 0, 1, ..., V-1. *)
+  E' :> nat -> nat -> bool ; (* The edge relation *)
+  E_irreflexive' : all x : V', (E' x x = false) ;
+  E_symmetric' : all x : V', all y : V', (E' x y = E' y x)
+}.
+
 
 (** Let us define some graphs. *)
 
@@ -32,11 +43,6 @@ Proof.
          |} ; auto.
 Defined.
 
-Lemma eq_dec : forall n m : nat, {n = m} + {n <> m}.
-Proof.
-  admit.
-Qed.
-
 (* Complete graph on [n] vertices *)
 Definition K (n : nat) : Graph.
 Proof.
@@ -44,10 +50,7 @@ Proof.
             E := (fun x y => x <> y)
          |}.
   - intros.
-    (**
     destruct (Nat.eq_dec x y) ; tauto.
-    *)
-    destruct (eq_dec x y); tauto.
   - intros x H L.
     absurd (x = x) ; tauto.
   - intros ; now apply not_eq_sym.
@@ -61,15 +64,9 @@ Proof.
             E := fun x y => S x = y \/ x = S y
          |}.
   - intros.
-    (**
     destruct (eq_nat_dec (S x) y).
-    *)
-    destruct (eq_dec (S x) y).
     + tauto.
-    (**
     + destruct (eq_nat_dec x (S y)).
-    *)
-    + destruct (eq_dec x (S y)).
       * tauto.
       * { right.
           intros [ ? | ? ].
@@ -85,27 +82,6 @@ Proof.
     + right ; now symmetry.
     + left; now symmetry.
 Defined.
-
-Lemma eq_nat_dec : forall n m : nat, {n = m} + {n <> m}.
-Proof.
-  admit.
-Qed.
-
-Lemma neq_succ_diag_r : forall n, not(n = S n).
-Proof.
-  admit.
-Qed.
-
-Lemma neq_succ_diag_l : forall n, not(S n = n).
-Proof.
-  admit.
-Qed.
-
-Lemma neq_succ_0 : forall n, not(S n = 0).
-Proof.
-  admit.
-Qed.
-
 
 (** [Cycle n] is the cycle on [n+3] vertices. We define it in a way
     which avoids modular arithmetic. *)
@@ -125,24 +101,12 @@ Proof.
     tauto.
   - intros ? ? H.
     destruct H as [?|[?|[[? ?]|[? ?]]]].
-    (**
     + firstorder using Nat.neq_succ_diag_l.
     + firstorder using Nat.neq_succ_diag_r.
-    *)
-    + firstorder using neq_succ_diag_l.
-    + firstorder using neq_succ_diag_r.
-    (**
     + apply (Nat.neq_succ_0 (S n)) ; transitivity x.
       * now symmetry.
       * assumption.
     + apply (Nat.neq_succ_0 (S n)) ; transitivity x.
-      * now symmetry.
-      * assumption.
-    *)
-    + apply (neq_succ_0 (S n)) ; transitivity x.
-      * now symmetry.
-      * assumption.
-    + apply (neq_succ_0 (S n)) ; transitivity x.
       * now symmetry.
       * assumption.
   - intros ? ? ? ? [?|[?|[[? ?]|[? ?]]]].
@@ -180,14 +144,9 @@ Definition edges (G : Graph) : nat :=
   sum (fun x => sum (fun y => if E_decidable G x y then 1 else 0) x) (V G).
 
 (* An example: calculate how many edges are in various graphs. *)
-Eval compute in edges (Cycle 2). (* NB: This is a cycle on 5 vertices. *)
+Eval compute in edges (Cycle 4). (* NB: This is a cycle on 5 vertices. *)
 Eval compute in edges (K 5).
 Eval compute in edges (Empty 10).
-
-Lemma lt_dec n m : {n < m} + {~ n < m}.
-Proof.
-  admit.
-Qed.
 
 (** The degree of a vertex. We define it so that it
     return 0 if we give it a number which is not
@@ -231,37 +190,23 @@ Definition naredi_mrezo (A : nat * nat) : Graph.
   - intros.
 *)
 
-Lemma lt_dec_super n m : {n < m} + {n >= m}.
-Proof.
-  admit.
-Qed.
-
 Definition graf_dodana_tocka (G : Graph) :  Graph.
   refine {| V :=  (V G) + 1;
-            E := fun x y => x<(V G) /\ y<(V G) /\ G x y
+            E := fun x y => x < V G /\ y < V G /\ E G x y
          |}.
   - intros.
+    destruct (lt_dec x G) ;
+    destruct (lt_dec y G) ;
+    destruct (E_decidable G x y) ; tauto.
+  - intros x x_lt_G [H1 [H2 H3]].
     destruct (lt_dec x G).
-    destruct (lt_dec y G).
-    destruct (E_decidable G x y).
+    + absurd (G x x).
+      * now apply E_irreflexive.
+      * assumption.
     + tauto.
-    + tauto.
-    + tauto.
-    + tauto.
-  - intros.
-    admit. (* POZOR!!! *)
-    (*
-    destruct (lt_dec_super x G).
-    + destruct (E_irreflexive G x).
-      * auto.
-      *
-    destruct (lt_dec x G).  
-    destruct (E_irreflexive G x).
-    + auto.
-    + destruct (E_irreflexive G x).
-      * auto.
-      * 
-    *)
+(*   - intros x x_lt_G1 y y_lt_G1 [H1 [H2 H3]].
+    firstorder using E_symmetric.
+*)
   - intros x xM y yM H.
     destruct H.
     destruct H0.
@@ -269,8 +214,86 @@ Definition graf_dodana_tocka (G : Graph) :  Graph.
     + assumption.
     + split.
       * assumption.
-      * destruct (E_symmetric G x H y H0).
-   
+      * now apply E_symmetric.
+Defined.
 
-Definition naredi_stozec: Graph -> Graph :=
-  fun (G : Graph) => SG.
+Definition naredi_stozec (G : Graph) :  Graph.
+  refine {| V :=  (V G) + 1;
+            E := fun x y => (x < V G /\ y < V G /\ E G x y
+            ) \/ (x < V G /\ y >= V G) \/ (y < V G /\ x >= V G)
+         |}.
+  - intros.
+    destruct (lt_dec x G).
+    + destruct (lt_dec y G).
+      * destruct (E_decidable G x y).
+        tauto.
+        right.
+        intro H.
+        destruct H.
+        tauto.
+        destruct H.
+        omega.
+        omega.
+      * left.
+        right.
+        left.
+        omega.
+    + destruct (lt_dec y G).
+      * left.
+        right.
+        right.
+        omega. 
+      * right.
+        intro H.
+        destruct H.
+        tauto.
+        tauto.
+  - intros.
+    intro H0.
+    destruct H0.
+    + absurd (G x x).
+      * now apply E_irreflexive.
+      * tauto.
+    + omega.
+  - intros x xM y yM H.
+    destruct H.
+    + left. 
+      firstorder using E_symmetric.
+    + right.
+      tauto.
+Defined.
+    
+Theorem stozec_ima_tocko_vec: (forall G : Graph, V (naredi_stozec G) = (V G) +1).
+Proof.
+  intro.
+  auto.
+Qed.
+
+Theorem polni_graf_ima_n_tock: (forall n : nat, V (K n) = n).
+Proof.
+  intro.
+  auto.
+Qed.
+
+Theorem polni_graf_ima_n_nad_2_povezav: (forall n : nat, 2*(edges (K n)) = n * (n - 1)).
+Proof.
+  intro.
+  tauto.
+
+*)
+
+Theorem pot_ima_minus_eno_povezavo: (forall n : nat, edges (Path n) = (V (Path n)) - 1).
+Proof.
+  intro.
+  tauto.
+
+
+
+Theorem graf_dodana_tocka_enako_stevilo_povezav: (forall G : Graph, edges (graf_dodana_tocka G) = edges G).
+Proof.
+  intro.
+  tauto.
+
+Theorem stozec_ima_stevilo_tock_vec_povezav: (forall G : Graph, edges (naredi_stozec G) = (edges G) + (V G)).
+Proof.
+  intro.
