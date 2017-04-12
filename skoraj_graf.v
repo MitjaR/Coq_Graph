@@ -121,21 +121,12 @@ Defined.
 (* We work towards a general theorem: the number of vertices with odd degree is odd. *)
 
 (** Given a decidable predicate [P] on [nat], we can count how many numbers up to [n] satisfy [P]. *)
-Definition count:
-  forall P : nat -> Prop,
-    (forall x, {P x} + {~ P x}) -> nat -> nat.
-Proof.
-  intros P D n.
-  induction n.
-  - exact 0.
-  - destruct (D n).
-    + exact (1 + IHn).
-    + exact IHn.
-Defined.
+Definition count (n : nat) {P : nat -> Prop} (decP : forall x, {P x} + {~ P x})  :=
+  sum' n (fun x => if decP x then 1 else 0).
 
 (** The number of edges in a graph. *)
 Definition edges (G : Graph) : nat :=
-  sum (fun x => sum (fun y => if E_decidable G x y then 1 else 0) x) (V G).
+  sum' (V G) (fun x => count x (E_decidable G x)).
 
 (* An example: calculate how many edges are in various graphs. *)
 Eval compute in edges (Cycle 4). (* NB: This is a cycle on 5 vertices. *)
@@ -145,26 +136,14 @@ Eval compute in edges (Empty 10).
 (** The degree of a vertex. We define it so that it
     return 0 if we give it a number which is not
     a vertex. *)
-Definition degree (G : Graph) (x : nat) : nat.
-Proof.
-  destruct (lt_dec x (V G)) as [ Hx | ? ].
-  - { apply (count (fun y => y < G /\ G x y)).
-      - intro z.
-        destruct (lt_dec z G) as [Hz|?].
-        + destruct (E_decidable G x z).
-          * left ; tauto.
-          * right ; tauto.
-        + right ; tauto.
-      - exact (V G). }
-  - exact 0.
-Defined.
+Definition degree (G : Graph) (x : nat) :=
+  count (V G) (E_decidable G x).
 
 (* Let us compute the degree of a vertex. *)
-(**
-Eval compute in degree (K 6) 4.
+
+Eval compute in degree (K 6) 3.
 Eval compute in degree (Cycle 4) 0.
 Eval compute in degree (Cycle 4) 2.
-*)
 
 Definition graf_izprazni: Graph -> Graph :=
   fun (G : Graph) => (Empty (V G)).
@@ -269,17 +248,23 @@ Proof.
   auto.
 Qed.
 
-Theorem polni_graf_ima_n_nad_2_povezav (n : nat) : 2 * edges (K n) = n * (n - 1).
+Theorem polni_graf_edges (n : nat) :
+  edges (K n) = sum' n (fun x => sum' x (fun y => 1)).
+Proof.
+  apply change_sum.
+  intros x p.
+  apply change_sum.
+  intros y q.
+  destruct (E_decidable (K n) x y) as [_|G].
+  - reflexivity.
+  - simpl in G.
+    omega.
+Qed.
+
+Theorem hand_shake (G : Graph) :
+  2 * edges G = sum' (V G) (degree G).
 Proof.
   unfold edges.
-
-Lemma polni_graf_sosedi (n x : nat) (H : x < n) :
-  sum (fun y : nat => if E_decidable (K n) x y then 1 else 0) x = x.
-Proof.
-  unfold K ; simpl.
-
-
-
 
 (*
 Theorem pot_ima_minus_eno_povezavo: (forall n : nat, edges (Path n) = (V (Path n)) - 1).
