@@ -1,0 +1,6 @@
+/.lia.cache
+/.nia.cache
+/Makefile
+*.glob
+*.v.d
+*.vo

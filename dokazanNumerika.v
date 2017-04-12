@@ -55,30 +55,27 @@ Proof.
   omega.
 Qed.
 *)
-  
 
-Fixpoint sum (f : nat -> nat) (n : nat) :=
-  match n with
-  | 0 => 0
-  | S m => f m + sum f m
-  end.
 
-Lemma n_manj_n2 (n : nat):
-  n <= n * n.
+Fixpoint sum' (n : nat) (f : forall i, i < n -> nat) {struct n} : nat.
 Proof.
-  induction n.
-  - omega.
-  - pose (Nat.mul_add_distr_r n 1 (S n)).
-    replace (n+1) with (S n) in e.
-    rewrite e.
-    + pose (le_plus_r (n * S n) (S n)).
-      omega.
-    + omega.
-Qed.
-  (*
-  pose (Nat.mul_le_mono_nonneg 1 n n n).
-  apply l.
-  *)
+  destruct n.
+  - exact 0.
+  - simple refine (sum' n (fun i (p : i < n) => f i _) + f n _).
+    + apply (lt_trans i n (S n)).
+      * assumption.
+      * auto.
+    + auto.
+  (* - simple refine (sum' n (fun i (p : i < n) => f i _) + f n _) ; omega. *)
+
+  (* - simple refine (_ + _). *)
+  (*   + simple refine (sum' n (fun i (p : i < n) => f i _)). *)
+  (*     * omega. *)
+  (*   + simple refine (f n _). *)
+  (*     auto. *)
+Defined.
+
+Definition sum (n : nat) (f : nat -> nat) := sum' n (fun i _ => f i).
 
 Lemma asocA (n : nat):
   n + n + (n * n - n) = n + (n + (n * n - n)).
@@ -86,15 +83,28 @@ Proof.
   omega.
 Qed.
 
+Lemma n_manj_n2 (n : nat):
+  n <= n * n.
+Proof.
+  nia.
+Qed.
+
+Lemma sum_to_n' (n : nat) :
+  n + 2 * sum n (fun x => x) = n * n.
+Proof.
+  induction n.
+  - auto.
+  - simpl in *.
+Qed.
 
 Lemma sum_to_n (n : nat) :
-  2 * sum (fun x => x) n = n * (n - 1).
+  2 * sum n (fun x => x) = n * (n - 1).
 Proof.
   induction n.
   - auto.
   - simpl.
-    set (y := sum (fun x => x) n).
-    replace (sum (fun x => x) n) with y in IHn by reflexivity.
+    set (y := sum n (fun x => x)) in *.
+    (* tu deluje nia. *)
     ring_simplify.
     replace (n * (n - 1)) with (n * n - n) in IHn.
     + rewrite IHn.
@@ -117,24 +127,21 @@ Proof.
       omega.
 Qed.
 
-Lemma sum_y_1_x (x : nat) : 
-  (sum (fun y => 1) x = x).
+Lemma sum_y_1_x (n : nat) :
+  sum n (fun y => 1) = n.
 Proof.
-  unfold sum.
-  induction x.
-  - auto.
-  - auto.
+  unfold sum ; induction n ; auto.
 Qed.
 
 Lemma sum_sum_n2 (n : nat) :
-  2 * sum (fun x => (sum (fun y => 1) x)) n = n * (n - 1).
+  2 * sum n (fun x => sum x (fun y => 1) x) = n * (n - 1).
 Proof.
   induction n.
   - auto.
   - simpl.
-    set (w :=  sum (fun x : nat => sum (fun _ : nat => 1) x) n).
-    replace (sum (fun x : nat => sum (fun _ : nat => 1) x) n) with w in IHn by reflexivity.
-    rewrite (sum_y_1_x n). (* TU JE RAZLIKA DOKAZOV *)
+    set (w :=  sum n (fun x : nat => sum x (fun _ : nat => 1))) in *.
+    rewrite sum_y_1_x. (* TU JE RAZLIKA DOKAZOV *)
+    (* na tem mestu deluje: nia. *)
     ring_simplify.
     replace (n * (n - 1)) with (n * n - n) in IHn.
     + rewrite IHn.
@@ -148,15 +155,6 @@ Proof.
     + pose (Nat.mul_sub_distr_l n 1 n).
       omega.
 Qed.
-    
 
-Lemma sum_sum_n (n : nat) :
-  2 * sum (fun x => (sum (fun y => 1) x)) n = n * (n - 1).
-Proof.
-  (*
-  TO JE NAPAKA!!!
-  rewrite sum_y_1_x.
-  *)
-Admitted.
 
 

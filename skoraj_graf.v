@@ -4,6 +4,8 @@ Require Import Arith.
 Require Import Psatz.
 Require Import Omega.
 
+Require Import dokazanNumerika.
+
 (** Lemma is something that should be proved by others *)
 
 (** In order to avoid the intricacies of constructive mathematics,
@@ -131,14 +133,6 @@ Proof.
     + exact IHn.
 Defined.
 
-(** Given a function [f : nat -> nat] and number [n], compute
-    the sum of [f 0, f 1, ..., f (n-1)]. *)
-Fixpoint sum (f : nat -> nat) (n : nat) :=
-  match n with
-  | 0 => 0
-  | S m => f m + sum f m
-  end.
-
 (** The number of edges in a graph. *)
 Definition edges (G : Graph) : nat :=
   sum (fun x => sum (fun y => if E_decidable G x y then 1 else 0) x) (V G).
@@ -262,7 +256,7 @@ Definition naredi_stozec (G : Graph) :  Graph.
     + right.
       tauto.
 Defined.
-    
+
 Theorem stozec_ima_tocko_vec: (forall G : Graph, V (naredi_stozec G) = (V G) +1).
 Proof.
   intro.
@@ -275,13 +269,19 @@ Proof.
   auto.
 Qed.
 
-Theorem polni_graf_ima_n_nad_2_povezav: (forall n : nat, 2*(edges (K n)) = n * (n - 1)).
+Theorem polni_graf_ima_n_nad_2_povezav (n : nat) : 2 * edges (K n) = n * (n - 1).
 Proof.
-  intro.
-  tauto.
+  unfold edges.
 
-*)
+Lemma polni_graf_sosedi (n x : nat) (H : x < n) :
+  sum (fun y : nat => if E_decidable (K n) x y then 1 else 0) x = x.
+Proof.
+  unfold K ; simpl.
 
+
+
+
+(*
 Theorem pot_ima_minus_eno_povezavo: (forall n : nat, edges (Path n) = (V (Path n)) - 1).
 Proof.
   intro.
@@ -297,3 +297,4 @@ Proof.
 Theorem stozec_ima_stevilo_tock_vec_povezav: (forall G : Graph, edges (naredi_stozec G) = (edges G) + (V G)).
 Proof.
   intro.
+*)

@@ -1,0 +1,4 @@
+-R . ""
+
+skoraj_graf.v
+dokazanNumerika.v
