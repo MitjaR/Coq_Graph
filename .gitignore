@@ -1,6 +1,7 @@
-/.lia.cache
-/.nia.cache
-/Makefile
-*.glob
-*.v.d
-*.vo
+# Ignore everything:
+*
+# Don't ignore directories:
+!*/
+# Don't ignore files types:
+!.gitignore
+!*.v
