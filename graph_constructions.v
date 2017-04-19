@@ -6,6 +6,7 @@ Require Import kernel_numeric.
 Require Import kernel_graph.
 Require Import graph_examples.
 
+
 (** 
 Let us define some graph constructions. 
 **)

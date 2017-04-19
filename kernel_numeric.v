@@ -167,3 +167,63 @@ Proof.
     rewrite sum'_S.
     omega.
 Qed.
+
+(* 
+malo je smesno da rabim tole lemo le da zrcali cez enacaj 
+kako se da drugace?
+*)
+Lemma vsota_funkcij_rv (n : nat) (f g : nat -> nat) :
+  sum' n f + sum' n g = sum' n (fun x => (f x) + (g x)).
+Proof.
+  rewrite vsota_funkcij.
+  auto.
+Qed.
+
+Lemma krajsanje_izraza (An_ A_n Ann M Q : nat) :
+  A_n + M = Q -> An_ + A_n + Ann + M = Ann + An_ + Q.
+Proof.
+  omega.
+Qed.
+
+Lemma lasnost_vsote_part (n : nat) (f : nat -> nat -> nat) :
+  sum' n (fun x => (sum' x (fun y => f x y) + 
+                    sum' x (fun y => f y x) + 
+                    f x x)) =
+  sum' n (fun x => sum' n (fun y => f x y)).
+Proof.
+  induction n.
+  - auto.
+  - rewrite sum'_S.
+    rewrite IHn.
+    rewrite sum'_S.
+    rewrite sum'_S.
+    set (Ann := f n n).
+    set (An_ := sum' n (fun y : nat => f n y)).
+    set (A_n := sum' n (fun y : nat => f y n)).
+    set (M := sum' n (fun x : nat => sum' n (fun y : nat => f x y))).
+    set (Q := sum' n (fun x : nat => sum' (S n) (fun y : nat => f x y))).
+    apply (krajsanje_izraza An_ A_n Ann M Q).
+    unfold A_n.
+    unfold M.
+    unfold Q.
+    rewrite (vsota_funkcij_rv n 
+      (fun y : nat => f y n)
+      (fun x : nat => sum' n (fun y : nat => f x y))).
+    apply change_sum.
+    intros j p.
+    rewrite sum'_S.
+    auto.
+Qed.
+
+Lemma lasnost_vsote (n : nat) (f : nat -> nat -> nat) :
+  sum' n (fun x => (sum' x (fun y => f x y))) + 
+  sum' n (fun x => (sum' x (fun y => f y x))) + 
+  sum' n (fun x => (f x x)) =
+  sum' n (fun x => sum' n (fun y => f x y)).
+Proof.
+  rewrite vsota_funkcij_rv.
+  rewrite vsota_funkcij_rv.
+  apply lasnost_vsote_part.
+Qed.
+
+
