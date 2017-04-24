@@ -1,6 +1,8 @@
 Require Import Arith.
 Require Import Omega.
 Require Import Psatz.
+Require Import Logic.
+Require Import Even.
 
 (*
 (* tole na zalost ni ok *)
@@ -225,5 +227,426 @@ Proof.
   rewrite vsota_funkcij_rv.
   apply lasnost_vsote_part.
 Qed.
+
+Lemma lasnost_vsote2 (n : nat) (f : nat -> nat -> nat) :
+  sum' n (fun x => (sum' x (fun y => f x y))) + 
+  sum' n (fun x => (sum' x (fun y => f y x))) + 
+  sum' n (fun x => (f x x)) =
+  sum' n (fun x => sum' n (fun y => f x y)).
+Proof.
+  do 2 rewrite vsota_funkcij_rv.
+  apply lasnost_vsote_part.
+Qed.
+
+Lemma test_basic (x : nat):
+  True = True.
+Proof.
+  pose (Nat.Even).
+  auto.
+Qed.
+
+Definition soda_prica (n k : nat) :=
+  n = 2 * k.
+
+Definition liha_prica (n k : nat) :=
+  n = 2 * k + 1.
+
+Definition sod (n : nat) :=
+  exists k : nat, (soda_prica n k).
+
+Definition lih (n : nat) :=
+  exists k : nat, (liha_prica n k).
+(*
+Lemma even_dec (n : nat):
+  {sod n} + {~sod n}.
+Proof.
+  induction n.
+  - left.
+    unfold sod.
+    exists 0.
+    unfold soda_prica.
+    auto.
+  - destruct IHn. 
+    + right.
+      unfold sod.
+      intro A.
+*)
+(* tole bi verjetno prestavil sem *)
+Definition countA (n : nat) (P : nat -> Prop) (decP : forall x, {P x} + {~ P x}) :=
+  sum' n (fun x => if decP x then 1 else 0).
+
+Lemma nic_ni_lih (k : nat):
+  2 * k + 1 <> 0.
+Proof.
+  omega.
+Qed.
+
+Lemma sod_ni_lih_part (k : nat) :
+  (forall l : nat, 2 * l + 1 <> 2 * k).
+Proof.
+  intro l.
+  omega.
+Qed.
+
+(** 
+Ne strinjam se z definicijo 
+Nat.Odd n := exists m : nat, n = 2 * m + 1
+Zakaj ni:
+Nat.Odd n := exists m : nat, n = 1 + 2 * m
+
+Obrazlozitev:
+S (2 * m) = 1 + 2 * m
+**)
+Lemma sod_ali_lih (n : nat) :
+  (Nat.Even n) \/ (Nat.Odd n).
+Proof.
+  unfold Nat.Even.
+  unfold Nat.Odd.
+  induction n.
+  - left.
+    exists 0.
+    auto.
+  - destruct IHn.
+    + right.
+      destruct H as [k G].
+      exists k.
+      rewrite G.
+      omega.
+    + left.
+      destruct H as [k G].
+      exists (S k).
+      rewrite G.
+      omega.
+Qed.
+
+Lemma logika (A B : Prop) :
+  (~ A) /\ (A \/ B) -> B.
+Proof.
+  intro C.
+  destruct C.
+  destruct H0.
+  - absurd A; auto.
+  - auto.
+Qed.
+
+Lemma logikaA (A B : Prop) :
+  (~ A) -> (A \/ B) -> B.
+Proof.
+  intros P Q.
+  destruct Q.
+  - absurd A; auto.
+  - auto.
+Qed.
+
+
+
+Lemma sod_ni_lih (n : nat) :
+  ~ (Nat.Even n) -> (Nat.Odd n).
+Proof.
+  intro P.
+  apply (logikaA (Nat.Even n)).
+  auto.
+  apply sod_ali_lih.
+Qed.
+
+
+Lemma exists_forall (P : nat -> Prop):
+  ~ (exists x : nat, P x) <-> forall x : nat, ~ P x.
+Proof.
+  (* firstorder. *)
+  split.
+  - intro A.
+    intro x.
+    intro B.
+    absurd (exists x : nat, P x); auto.
+    exists x.
+    apply B.
+  - intro A. 
+    intro B.
+    destruct B.
+    absurd (P x); auto.
+Qed.
+
+Lemma even_dec : forall n : nat, {Nat.Even n} + {~Nat.Even n}.
+Proof.
+  intro n.
+  induction n.
+  - left.
+    unfold Nat.Even.
+    exists 0.
+    omega.
+  - destruct IHn.
+    + right.
+      unfold Nat.Even in e.
+      unfold Nat.Even.
+      apply exists_forall.
+      intro k.
+      destruct e.
+      rewrite H.
+      omega.
+    + left.
+      pose (sod_ni_lih n).
+      assert (Nat.Odd n).
+      * auto.
+      * unfold Nat.Odd in H.
+        destruct H.
+        rewrite H.
+        unfold Nat.Even.
+        exists (S x).
+        omega.
+Qed.
+
+
+
+
+(*
+Search ((_ \/ _) -> (_ \/ _)).
+*)
+(* logicna posledica sod ni lih... *)
+Lemma lih_ni_sod (n : nat) :
+  ~ (Nat.Odd n) -> (Nat.Even n).
+Proof.
+  intro P.
+  apply (logikaA (Nat.Odd n)).
+  auto.
+  (*
+  (* assert je ena boljsih stvari *)
+  assert (Nat.Even n \/ Nat.Odd n).
+  apply sod_ali_lih.
+  *)
+  pose (sod_ali_lih n).
+  tauto.
+Qed.
+
+Eval compute in (Datatypes.S 3).
+
+Lemma odd_dec : forall n : nat, {Nat.Odd n} + {~Nat.Odd n}.
+Proof.
+  intro n.
+  induction n.
+  - right.
+    unfold Nat.Odd.
+    rewrite exists_forall.
+    intro x.
+    (* tole bi lahko delalo: apply (nic_ni_lih x).  ampak ne dela *)
+    pose (nic_ni_lih x).
+    omega.
+  - destruct IHn as [L|A].
+    + right.
+      unfold Nat.Odd in *.
+      apply exists_forall.
+      intro k.
+      destruct L.
+      rewrite H.
+      omega.
+    + left.
+      pose (lih_ni_sod n).
+      assert (Nat.Even n).
+      * auto.
+      * unfold Nat.Even in H.
+        destruct H.
+        rewrite H.
+        unfold Nat.Odd.
+        exists x.
+        omega.
+Qed.
+
+
+
+
+
+
+(* Osnove liho sodo. *)
+
+(**
+Na enak nacin bi lahko tudi enega od zgornjih dveh.
+Ko imas enega od _dec so ostali enostavni.
+**)
+Lemma even_odd_dec (n : nat) :
+   {Nat.Even n} + {Nat.Odd n}.
+Proof.
+  destruct (even_dec n); auto.
+  pose (sod_ni_lih n).
+  auto.
+Qed.
+
+
+Lemma sum_even_part (n m : nat):
+  (Nat.Even n /\ Nat.Even m)
+  \/
+  (Nat.Odd n /\ Nat.Odd m)
+  -> 
+  Nat.Even (n + m).
+Proof.
+  intros [[[x H1] [y H2]] | [[x H1] [y H2]]]; unfold Nat.Even in *.
+  - exists (x + y).
+    rewrite H1.
+    rewrite H2.
+    omega.
+  - exists (1 + x + y).
+    rewrite H1.
+    rewrite H2.
+    omega.
+Qed.
+
+Lemma sum_odd_part (n m : nat):
+  (Nat.Even n /\ Nat.Odd m)
+  -> 
+  Nat.Odd (n + m).
+Proof.
+  intros [[x H1] [y H2]]; unfold Nat.Odd in *.
+  - exists (x + y).
+    rewrite H1.
+    rewrite H2.
+    omega.
+Qed.
+
+
+(* poimenovano bolj pravilno. *)
+Lemma sod_ni_lihA (n : nat) :
+  (Nat.Even n) -> ~(Nat.Odd n).
+Proof.
+  intro P.
+  unfold Nat.Odd.
+  rewrite exists_forall.
+  unfold Nat.Even in *.
+  destruct P.
+  rewrite H.
+  intro.
+  omega.
+Qed.
+
+Lemma lih_ni_sodA (n : nat) :
+  (Nat.Odd n) -> ~(Nat.Even n).
+Proof.
+  pose (sod_ni_lihA n).
+  tauto.
+Qed.
+
+
+
+Lemma sum_even (n m : nat):
+  Nat.Even (n + m) <-> 
+  (Nat.Even n /\ Nat.Even m)
+  \/
+  (Nat.Odd n /\ Nat.Odd m).
+Proof.
+  split; try (apply sum_even_part).
+  intro Snm.
+  destruct (even_odd_dec n); destruct (even_odd_dec m); 
+    auto; absurd (Nat.Odd (n + m)); try apply (sod_ni_lihA (n + m)); auto.
+  - apply sum_odd_part.
+    auto.
+  - replace (n + m) with (m + n).
+    + apply sum_odd_part.
+      auto.
+    + omega. 
+Qed.
+
+Lemma sum_odd_partA (n m : nat):
+  (Nat.Even n /\ Nat.Odd m)
+  \/
+  (Nat.Odd n /\ Nat.Even m)
+  -> 
+  Nat.Odd (n + m).
+Proof.
+  intros [[[x H1] [y H2]]|[[x H1] [y H2]]]; unfold Nat.Odd in *;
+    exists (x + y); rewrite H1; rewrite H2; omega.
+Qed.
+
+
+(* to je skoraj isti dokaz kot za sode *)
+Lemma sum_odd (n m : nat):
+  Nat.Odd (n + m) <-> 
+  (Nat.Even n /\ Nat.Odd m)
+  \/
+  (Nat.Odd n /\ Nat.Even m).
+Proof.
+  split; try (apply sum_odd_partA).
+  intro Onm.
+  destruct (even_odd_dec n); destruct (even_odd_dec m); 
+    auto; absurd (Nat.Odd (n + m)); try apply (sod_ni_lihA (n + m)); auto.
+  - apply sum_even_part.
+    auto.
+  - replace (n + m) with (m + n).
+    + apply sum_even_part.
+      auto.
+    + omega. 
+Qed.
+
+
+(* Tole folmulirati je bilo pa kar tezko. *)
+(*
+Lemma sodo_lihih_v_sodega (n : nat) (f : nat -> nat) :
+  (Nat.Even (sum' n f)) -> 
+  (Nat.Even (countA n (fun x => (Nat.Odd (f x))) (fun x => odd_dec (f x)))).
+Proof.
+*)
+
+Lemma pomoznaA1 (f : nat -> nat):
+  countA 0 (fun x : nat => Nat.Odd (f x)) (fun x : nat => odd_dec (f x)) = 0.
+Proof.
+  auto.
+Qed.
+
+Lemma pomoznaA2 (f : nat -> nat):
+  sum' 0 f = 0.
+Proof.
+  auto.
+Qed.
+
+(*
+Lemma sodo_lihih_v_sodega_part (n : nat) (f : nat -> nat) :
+  ((Nat.Even (sum' n f)) -> 
+  (Nat.Even (countA n (fun x => (Nat.Odd (f x))) (fun x => odd_dec (f x)))))
+  /\
+  ((Nat.Odd (sum' n f)) -> 
+  (Nat.Odd (countA n (fun x => (Nat.Odd (f x))) (fun x => odd_dec (f x))))).
+Proof.
+  induction n.
+  - split; intro.
+    + rewrite pomoznaA1.
+      auto.
+    + rewrite pomoznaA2 in H.
+      absurd (Nat.Odd 0); auto; intro.
+      unfold Nat.Odd in H.
+      destruct H.
+      omega.
+  - destruct IHn as [H G].
+    split.
+    + unfold countA.
+      do 2 rewrite sum'_S.
+      destruct (odd_dec (sum' n f)) as [A|A].
+      * assert (Nat.Odd
+          (countA n (fun x : nat => Nat.Odd (f x)) (fun x : nat => odd_dec (f x)))); auto.
+        unfold countA in H0.
+*)
+
+(*
+Lemma sodo_lihih_v_sodega_part (n : nat) (f : nat -> nat) :
+  ((Nat.Even (sum' n f)) -> 
+  (Nat.Even (countA n (fun x => (Nat.Odd (f x))) (fun x => odd_dec (f x)))))
+  /\
+  ((Nat.Odd (sum' n f)) -> 
+  (Nat.Odd (countA n (fun x => (Nat.Odd (f x))) (fun x => odd_dec (f x))))).
+Proof.
+  induction n.
+  - split; intro.
+    + rewrite pomoznaA1.
+      auto.
+    + rewrite pomoznaA2 in H.
+      absurd (Nat.Odd 0); auto; intro.
+      unfold Nat.Odd in H.
+      destruct H.
+      omega.
+  - destruct IHn as [H G].
+    split.
+    + unfold countA.
+      do 2 rewrite sum'_S.
+      intro Q.
+      destruct (even_dec (f n + sum' n f)) as [A|B].
+*)
+(*... *)
+
 
 

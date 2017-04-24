@@ -199,15 +199,15 @@ Proof.
   apply (simetricnost_povezav G x p y (Nat.lt_trans y x (V G) q p)).
 Qed.
 
-(*
+
 Theorem hand_shake (G : Graph) :
   2 * edges G = sum' (V G) (degree G).
 Proof.
   unfold edges.
   unfold degree.
   unfold count.
-  (*pomozna2 , pomozna3, omega*)
+  rewrite hand_shake_pomozna2.
+  rewrite hand_shake_pomozna3.
+  omega.
+Qed.
 
-(*bom to dokoncal drugic*)
-
-*)
