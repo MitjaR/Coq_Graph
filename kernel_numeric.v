@@ -622,7 +622,7 @@ Proof.
         unfold countA in H0.
 *)
 
-(*
+
 Lemma sodo_lihih_v_sodega_part (n : nat) (f : nat -> nat) :
   ((Nat.Even (sum' n f)) -> 
   (Nat.Even (countA n (fun x => (Nat.Odd (f x))) (fun x => odd_dec (f x)))))
@@ -639,14 +639,92 @@ Proof.
       unfold Nat.Odd in H.
       destruct H.
       omega.
-  - destruct IHn as [H G].
-    split.
-    + unfold countA.
-      do 2 rewrite sum'_S.
-      intro Q.
-      destruct (even_dec (f n + sum' n f)) as [A|B].
-*)
-(*... *)
+  - split; unfold countA; do 2 rewrite sum'_S.
+    + intro Q.
+      rewrite sum_even in Q.
+      destruct Q.
+      * destruct IHn as [A _].
+        assert (Nat.Even
+          (countA n (fun x : nat => Nat.Odd (f x)) 
+          (fun x : nat => odd_dec (f x)))); destruct H; auto.
+        replace (if odd_dec (f n) then 1 else 0) with 0.
+        {
+          apply sum_even_part.
+          left.
+          unfold countA in H0.
+          assert (Nat.Even 0). 
+          - unfold Nat.Even; exists 0; auto.
+          - auto.
+        }
+        {
+          destruct odd_dec; auto.
+          pose (sod_ni_lihA (f n)).
+          absurd (Nat.Odd (f n)); auto.
+        }
+      * destruct IHn as [_ A].
+        assert (Nat.Odd
+          (countA n (fun x : nat => Nat.Odd (f x)) 
+          (fun x : nat => odd_dec (f x)))); destruct H; auto.
+        replace (if odd_dec (f n) then 1 else 0) with 1.
+        {
+          apply sum_even_part.
+          right.
+          unfold countA in H0.
+          assert (Nat.Odd 1). 
+          - unfold Nat.Odd; exists 0; auto.
+          - auto.
+        }
+        {
+          destruct odd_dec; auto.
+          absurd (Nat.Odd (f n)); auto.
+        }
+    + intro Q.
+      rewrite sum_odd in Q.
+      destruct Q.
+      * destruct IHn as [_ A].
+        assert (Nat.Odd
+          (countA n (fun x : nat => Nat.Odd (f x)) 
+          (fun x : nat => odd_dec (f x)))); destruct H; auto.
+        replace (if odd_dec (f n) then 1 else 0) with 0.
+        {
+          apply sum_odd_partA.
+          left.
+          unfold countA in H0.
+          assert (Nat.Even 0). 
+          - unfold Nat.Even; exists 0; auto.
+          - auto.
+        }
+        {
+          destruct odd_dec; auto.
+          pose (sod_ni_lihA (f n)).
+          absurd (Nat.Odd (f n)); auto.
+        }
+      * destruct IHn as [A _].
+        assert (Nat.Even
+          (countA n (fun x : nat => Nat.Odd (f x)) 
+          (fun x : nat => odd_dec (f x)))); destruct H; auto.
+        replace (if odd_dec (f n) then 1 else 0) with 1.
+        {
+          apply sum_odd_partA.
+          right.
+          unfold countA in H0.
+          assert (Nat.Odd 1). 
+          - unfold Nat.Odd; exists 0; auto.
+          - auto.
+        }
+        {
+          destruct odd_dec; auto.
+          absurd (Nat.Odd (f n)); auto.
+        }
+Qed.
+
+
+Lemma sodo_lihih_v_sodega (n : nat) (f : nat -> nat) :
+  ((Nat.Even (sum' n f)) -> 
+  (Nat.Even (countA n (fun x => (Nat.Odd (f x))) (fun x => odd_dec (f x))))).
+Proof.
+  apply sodo_lihih_v_sodega_part.
+Qed.
 
 
 
