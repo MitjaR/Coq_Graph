@@ -67,7 +67,7 @@ Proof.
     + right ; now symmetry.
     + left; now symmetry.
 Defined.
-
+(*
 (* [Cycle n] is the cycle on [n+3] vertices. We define it in a way
     which avoids modular arithmetic. *)
 Definition Cycle (n : nat) : Graph.
@@ -100,6 +100,36 @@ Proof.
     + tauto.
     + tauto.
 Defined.
+*)
+Definition Cycle (n : nat) : Graph.
+Proof.
+  refine {| V := 3 + n ; (* Do not forget: we have [3+n] vertices 0, 1, ..., n+2 *)
+            E := fun x y =>
+                 ((S x = y \/ x = S y) \/ (x = 0 /\ y = 2 + n) \/ (x = 2 + n /\ y = 0))
+         |}.
+  - intros.
+    destruct (eq_nat_dec (S x) y); auto.
+    destruct (eq_nat_dec x (S y)); auto.
+    destruct (eq_nat_dec x 0); destruct (eq_nat_dec y (2 + n)); auto;
+    destruct (eq_nat_dec y 0); destruct (eq_nat_dec x (2 + n)); tauto.
+  - intros ? ? H.
+    destruct H as [[?|?]|[[? ?]|[? ?]]].
+    + firstorder using Nat.neq_succ_diag_l.
+    + firstorder using Nat.neq_succ_diag_r.
+    + apply (Nat.neq_succ_0 (S n)) ; transitivity x.
+      * now symmetry.
+      * assumption.
+    + apply (Nat.neq_succ_0 (S n)) ; transitivity x.
+      * now symmetry.
+      * assumption.
+  - intros ? ? ? ? [[?|?]|[[? ?]|[? ?]]].
+    + left; right; now symmetry.
+    + left; left; now symmetry.
+    + auto.
+    + auto.
+Defined.
+
+
 
 
 (** 
@@ -298,7 +328,7 @@ Proof.
     + omega.
 Qed.
 
-Theorem path_edges_number_part3 (n : nat) :
+Theorem path_edges_number_part3 :
     (sum' 0 (fun y : nat => (if Nat.eq_dec 0 (S y) then 1 else 0))) = 0.
 Proof.
   auto.
@@ -311,7 +341,7 @@ Proof.
   (* ekvivalentno destruct je enako ena ali vecje od ena*)
   induction x. 
   - rewrite path_edges_number_part1.
-    + rewrite (path_edges_number_part3 n).
+    + rewrite path_edges_number_part3.
       destruct (Nat.eq_dec 0 0); omega.
     + omega.
   - rewrite path_edges_number_part1.
@@ -349,4 +379,328 @@ Qed.
 
 (*#####<*)
 (* Path theorems. *)
+
+
+(* Cycle theorems. *)
+(*#####>*)
+Theorem cycle_points_number (n : nat):
+  V (Cycle n) = 3+n.
+Proof.
+  auto.
+Qed.
+
+
+(* enako kot za pot *)
+Theorem cycle_point_degree_part1 (n : nat) (x : nat) (p : x < 2+n):
+  (sum' x (fun y : nat => if E_decidable (Cycle n) x y then 1 else 0)) =
+  (sum' x (fun y : nat => (if Nat.eq_dec x (S y) then 1 else 0))).
+Proof.
+  apply change_sum.
+  intros y q. 
+  set (G := (Cycle n)).
+  destruct (E_decidable G x y) as [A|B].
+  - destruct A as [[H1|H2]|[H3|H4]]; try omega.
+    rewrite H2.
+    destruct (Nat.eq_dec (S y) (S y)); omega.
+  - destruct (Nat.eq_dec x (S y)); auto.
+    absurd (G x y); auto.
+    simpl.
+    auto.
+Qed.
+  
+
+Theorem cycle_point_degree_part2 (n : nat) (x : nat) (p : x < 2+n):
+  (sum' x (fun y : nat => if E_decidable (Cycle n) x y then 1 else 0))=if Nat.eq_dec x 0 then 0 else 1.
+Proof.
+  (* indukcije se ne rabi uporabil za uporabo primerov *)
+  (* ekvivalentno destruct je enako ena ali vecje od ena*)
+  induction x. 
+  - rewrite cycle_point_degree_part1.
+    + rewrite path_edges_number_part3.
+      destruct (Nat.eq_dec 0 0); omega.
+    + omega.
+  - rewrite cycle_point_degree_part1.
+    + rewrite (path_edges_number_part2 (2+n)).
+      * destruct (Nat.eq_dec (S x) 0); omega.
+      * omega.
+    + auto.
+Qed.
+
+Theorem cycle_point_degree_part3 (n : nat) (x : nat) (p : x = 2+n):
+  (sum' x (fun y : nat => if E_decidable (Cycle n) x y then 1 else 0)) =
+  (sum' x (fun y : nat => (if Nat.eq_dec 0 y then 1 else 0) + (if Nat.eq_dec (1+n) y then 1 else 0))).
+Proof.
+  apply change_sum.
+  intros y q. 
+  set (G := (Cycle n)).
+  destruct (E_decidable G x y) as [A|B].
+  - destruct A as [[H1|H2]|[H3|H4]]; try omega.
+    + assert (y = S n).
+      * omega.
+      * rewrite H.
+        destruct (Nat.eq_dec 0 (S n)); destruct (Nat.eq_dec (1+n) (S n)); auto; omega.
+    + destruct H4 as [_ w].
+      rewrite w.
+      destruct (Nat.eq_dec 0 0); destruct (Nat.eq_dec (1+n) 0); auto; omega.
+  - destruct (Nat.eq_dec 0 y); destruct (Nat.eq_dec (1+n) y); auto; try omega.
+    + absurd (G x y); auto; simpl; auto.
+    + absurd (G x y); auto; simpl; left; right; omega.
+Qed.
+
+Theorem eden_se_najde (x y : nat) (p : y < x):
+  sum' x (fun x0 : nat => if Nat.eq_dec y x0 then 1 else 0) = 1.
+Proof.
+  induction x.
+  - omega.
+  - rewrite sum'_S.
+    destruct (Nat.eq_dec y x).
+    + assert (sum' x (fun x0 : nat => if Nat.eq_dec y x0 then 1 else 0) =
+              sum' x (fun x0 : nat => 0)).
+      * apply change_sum.
+        intros j q.
+        destruct (Nat.eq_dec y j); auto; omega.
+      * rewrite (sum_n_krat_k x 0) in H.
+        rewrite H.
+        omega.
+    + rewrite IHx; omega.
+Qed.
+
+Theorem eden_se_najde_rv_part (x y : nat) (p : y < x):
+  sum' x (fun x0 : nat => if Nat.eq_dec x0 y then 1 else 0) = 
+  sum' x (fun x0 : nat => if Nat.eq_dec y x0 then 1 else 0).
+Proof.
+  apply change_sum.
+  intros j q.
+  destruct (Nat.eq_dec y j); destruct (Nat.eq_dec j y); auto; omega.
+Qed.
+
+Theorem eden_se_najde_rv (x y : nat) (p : y < x):
+  sum' x (fun x0 : nat => if Nat.eq_dec x0 y then 1 else 0) = 1.
+Proof.
+  rewrite (eden_se_najde_rv_part x y p).
+  apply eden_se_najde; auto.
+Qed.
+
+
+(*
+Theorem cycle_point_degree_part4 (n : nat) (x : nat) (p : x < 3+n):
+  (sum' x (fun y : nat => if E_decidable (Cycle n) x y then 1 else 0))=
+  if Nat.eq_dec x (2+n) then 2 else (if Nat.eq_dec x 0 then 0 else 1).
+Proof.
+  destruct (Nat.eq_dec x (2+n)) as [A|B].
+  - rewrite (cycle_point_degree_part3 n x A).
+    rewrite vsota_funkcij.
+    assert (q : 0 < x).
+    + omega.
+    + rewrite (eden_se_najde x 0 q).
+      assert (w : (1+n) < x).
+      * omega.
+      * rewrite (eden_se_najde x (1+n) w).
+        omega.
+  - apply cycle_point_degree_part2.
+    omega.
+Qed.
+*)
+
+Theorem cycle_point_degree_part5 (n : nat) (x : nat) (p : x < 3+n):
+  (sum' x (fun y : nat => if E_decidable (Cycle n) x y then 1 else 0))=
+  (if Nat.eq_dec x (2+n) then 1 else 0) + (if Nat.eq_dec x 0 then 0 else 1).
+Proof.
+  destruct (Nat.eq_dec x (2+n)) as [A|B].
+  - rewrite (cycle_point_degree_part3 n x A).
+    rewrite vsota_funkcij.
+    assert (q : 0 < x).
+    + omega.
+    + rewrite (eden_se_najde x 0 q).
+      assert (w : (1+n) < x).
+      * omega.
+      * rewrite (eden_se_najde x (1+n) w).
+        destruct (Nat.eq_dec x 0); omega.
+  - apply cycle_point_degree_part2.
+    omega.
+Qed.
+
+Theorem pomoznaA2 (x k l : nat) (p: x > 0):
+  l * (x - 1) + l = l * (1 + x - 1).
+Proof.
+  replace (1 + x - 1) with x.
+  - nia.
+  - omega.
+Qed.
+
+Theorem eden_se_najde_rv_splosen (x y k l : nat) (p : y < x):
+  sum' x (fun x0 : nat => if Nat.eq_dec x0 y then k else l) = k + (x - 1) * l.
+Proof.
+  induction x.
+  - omega.
+  - rewrite sum'_S.
+    destruct (Nat.eq_dec x y).
+    + assert (sum' x (fun x0 : nat => if Nat.eq_dec x0 y then k else l) =
+              sum' x (fun x0 : nat => l)).
+      * apply change_sum.
+        intros j q.
+        destruct (Nat.eq_dec j y); auto; omega.
+      * rewrite (sum_n_krat_k x l) in H.
+        rewrite H.
+        replace (S x - 1) with x; omega.
+    + rewrite IHx.
+      (* lia ne zna *)
+      (* nia pa zna ze tu*)
+      * nia.
+      * omega.
+Qed.
+
+
+Theorem cycle_edges (n : nat):
+  edges (Cycle n) = 3+n.
+Proof.
+  unfold edges.
+  assert (sum' (Cycle n) (fun x : nat => count x (E_decidable (Cycle n) x)) =
+         (sum' (Cycle n) (fun x : nat => 
+            (if Nat.eq_dec x (2+n) then 1 else 0) + (if Nat.eq_dec x 0 then 0 else 1)))).
+  - apply change_sum.
+    intros x p.
+    unfold count.
+    apply cycle_point_degree_part5.
+    auto.
+  - rewrite H.
+    rewrite vsota_funkcij.
+    replace (V (Cycle n)) with (3+n); auto.
+    assert (q : (2 + n) < (3 + n)).
+    + omega.
+    + rewrite (eden_se_najde_rv (3 + n) (2 + n) q).
+      assert (p : 0 < (3 + n)).
+      * omega.
+      * rewrite (eden_se_najde_rv_splosen (3 + n) 0 0 1 p).
+        omega.
+Qed.
+ 
+Theorem cycle_point_degree_partA (n x y : nat) (p : x < 3+n) (q : y < 3+n):
+  (if E_decidable (Cycle n) x y then 1 else 0) = 
+  (if (eq_nat_dec (S x) y) then 1 else 0) +
+  (if (eq_nat_dec x (S y)) then 1 else 0) +
+  (if (eq_nat_dec x 0) then (if (eq_nat_dec y (2 + n)) then 1 else 0) else 0) +
+  (if (eq_nat_dec y 0) then (if (eq_nat_dec x (2 + n)) then 1 else 0) else 0).
+Proof.
+  destruct (eq_nat_dec (S x) y);
+  destruct (eq_nat_dec x (S y)); try omega;
+  destruct (eq_nat_dec x 0); destruct (eq_nat_dec y (2 + n));
+  destruct (eq_nat_dec y 0); destruct (eq_nat_dec x (2 + n));
+  try omega;
+  destruct (E_decidable (Cycle n) x y) as [A|B];
+  try omega; 
+  try destruct A; try omega; absurd ((Cycle n) x y); auto; simpl; auto.
+  (*
+  - absurd ((Cycle n) x y); auto; simpl; auto.
+  - absurd ((Cycle n) x y); auto; simpl; auto.
+  - absurd ((Cycle n) x y); auto; simpl; auto.
+  - absurd ((Cycle n) x y); auto; simpl; auto.
+  - absurd ((Cycle n) x y); auto; simpl; auto.
+  - absurd ((Cycle n) x y); auto; simpl; auto.
+  - absurd ((Cycle n) x y); auto; simpl; auto.
+  - destruct A; omega.
+  - destruct A; omega.
+  - destruct A; omega.
+  - destruct A; omega.
+  - absurd ((Cycle n) x y); auto; simpl; auto.
+  - destruct A; omega.
+  - destruct A; omega.
+  - destruct A; omega.
+  *)
+Qed.
+
+Theorem cycle_point_degree_partB (n x : nat) (p : x < 3+n):
+  sum' (3 + n) (fun y : nat => 
+  if E_decidable (Cycle n) x y then 1 else 0) = 
+  sum' (3 + n) (fun y : nat => 
+  (if (eq_nat_dec (S x) y) then 1 else 0) +
+  (if (eq_nat_dec x (S y)) then 1 else 0) +
+  (if (eq_nat_dec x 0) then (if (eq_nat_dec y (2 + n)) then 1 else 0) else 0) +
+  (if (eq_nat_dec y 0) then (if (eq_nat_dec x (2 + n)) then 1 else 0) else 0)).
+Proof.
+  apply change_sum.
+  intros y q.
+  apply cycle_point_degree_partA; auto.
+Qed.
+
+Lemma same_sum' (n c : nat) (f : nat -> nat) :
+  (forall j (p : j < n), f j = c) ->
+  sum' n f = n * c.
+Proof.
+  induction n.
+  - intro H.
+    auto.
+  - rewrite sum'_S.
+    intro H.
+    rewrite IHn.
+    + rewrite H.
+      * lia.
+      * omega.
+    + auto.
+Qed.
+
+Theorem cycle_point_degree_partC (n x : nat) (p : x < 3+n):
+  sum' (3 + n) (fun y : nat => 
+  (if (eq_nat_dec (S x) y) then 1 else 0) +
+  (if (eq_nat_dec x (S y)) then 1 else 0) +
+  (if (eq_nat_dec x 0) then (if (eq_nat_dec y (2 + n)) then 1 else 0) else 0) +
+  (if (eq_nat_dec y 0) then (if (eq_nat_dec x (2 + n)) then 1 else 0) else 0)) = 2.
+Proof.
+  do 3 rewrite vsota_funkcij.
+  destruct (Nat.eq_dec x 0); destruct (Nat.eq_dec x (2 + n)).
+  - omega.
+  - assert (2 + n < 3 + n) as w; try omega.
+    rewrite (eden_se_najde_rv (3 + n) (2 + n) w).
+    assert ((S x) < 3 + n) as q; try omega.
+    rewrite (eden_se_najde (3 + n) (S x) q).
+    rewrite (same_sum' (3 + n) 0). 
+    + rewrite (same_sum' (3 + n) 0).
+      * omega.
+      * intros j g1.
+        destruct (Nat.eq_dec j 0); auto.
+    + intros j g1.
+      destruct (Nat.eq_dec x (S j)); auto.
+      omega.
+  - assert (0 < 3 + n) as q; try omega.
+    rewrite (eden_se_najde_rv (3 + n) 0 q).
+    rewrite (sum_n_krat_k (3 + n) 0).
+    rewrite (same_sum' (3 + n) 0).
+    + replace (sum' (3 + n) (fun x0 : nat => if Nat.eq_dec x (S x0) then 1 else 0))
+        with (sum' (3 + n) (fun x0 : nat => if Nat.eq_dec (x-1) x0 then 1 else 0)).
+      * assert (x - 1 < 3 + n) as w; try omega.
+        rewrite (eden_se_najde (3 + n) (x - 1) w).
+        omega.
+      * apply change_sum.
+        intros j g1.
+        destruct (Nat.eq_dec x (S j)); destruct (Nat.eq_dec (x - 1) j); omega.
+    + intros j g1.
+      destruct (Nat.eq_dec (S x) j); omega.
+  - rewrite (sum_n_krat_k (3 + n) 0).
+    assert ((S x) < 3 + n) as q; try omega.
+    rewrite (eden_se_najde (3 + n) (S x) q).
+    replace (sum' (3 + n) (fun x0 : nat => if Nat.eq_dec x (S x0) then 1 else 0))
+      with (sum' (3 + n) (fun x0 : nat => if Nat.eq_dec (x-1) x0 then 1 else 0)).
+    + assert (x - 1 < 3 + n) as w; try omega.
+      rewrite (eden_se_najde (3 + n) (x - 1) w).
+      rewrite (same_sum' (3 + n) 0).
+      * omega.
+      * intros j g1.
+        destruct (Nat.eq_dec j 0); omega.
+    + apply change_sum.
+      intros j g1.
+      destruct (Nat.eq_dec x (S j)); destruct (Nat.eq_dec (x - 1) j); omega.
+Qed.
+
+
+Theorem cycle_point_degree_part (n : nat):
+  forall (x : nat),  x<3+n -> (degree (Cycle n) x = 2).
+Proof.
+  intros x p.
+  unfold degree.
+  unfold count.
+  replace (V (Cycle n)) with (3+n); auto.
+  set (G := Cycle n).
+  rewrite cycle_point_degree_partB; auto.
+  rewrite cycle_point_degree_partC; auto.
+Qed.
 
