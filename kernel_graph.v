@@ -15,7 +15,17 @@ Structure Graph := {
   E_symmetric : all x : V, all y : V, (E x y -> E y x)
 }.
 
-Theorem simetricnost_povezav (G : Graph):
+(** The number of edges in a graph. *)
+Definition edges (G : Graph) : nat :=
+  sum' (V G) (fun x => count x (E_decidable G x)).
+
+(** The degree of a vertex. We define it so that it
+    return 0 if we give it a number which is not
+    a vertex. *)
+Definition degree (G : Graph) (x : nat) :=
+  count (V G) (E_decidable G x).
+
+Theorem edges_symmetry (G : Graph):
   (all x : V G , all y : V G, 
   ((if E_decidable G x y then 1 else 0) = 
   (if E_decidable G y x then 1 else 0))).
@@ -27,15 +37,3 @@ Proof.
   - firstorder using E_symmetric.
   - auto.
 Qed.
-
-
-(** The number of edges in a graph. *)
-Definition edges (G : Graph) : nat :=
-  sum' (V G) (fun x => count x (E_decidable G x)).
-
-(** The degree of a vertex. We define it so that it
-    return 0 if we give it a number which is not
-    a vertex. *)
-Definition degree (G : Graph) (x : nat) :=
-  count (V G) (E_decidable G x).
-

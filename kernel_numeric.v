@@ -2,19 +2,19 @@ Require Import Arith.
 Require Import Omega.
 Require Import Psatz.
 
-(* TREBA POPRAVITI KNJIZNICE V COQ!!!*)
-
 (*
 Pozor:
 Ali je:
 le_ge_dec n m : {n <= m} + {n >= m}.
-pravilno definiran.
-Jaz bi rekel da ne, 
-saj moznosti nista izkljucujoce.
+pravilno definiran?
+
+Mounosti nista izklucujoce, 
+ampak vedno pa velja vsaj nekaj.
+Ampak tu je dec, mogoce bi bilo 
+boljse drugacno ime?
 *)
 
 (**
-Pozor: 
 Zaradi definicije naslednika se mora suma odvijati 
 po prvem elementu. Sicer povsod problemi z indukcijo.
 **)
@@ -133,10 +133,6 @@ Proof.
   rewrite vsota_funkcij.
   auto.
 Qed.
-
-
-
-
 
 
 

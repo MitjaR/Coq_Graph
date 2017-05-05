@@ -1,12 +1,13 @@
 -R . ""
 
+kernel_logic.v
 kernel_numeric.v
-kernel_graph.v
 numeric_extensions.v
 numeric_even.v
+kernel_graph.v
+kernel_graph_extensions.v
+graph_handshake.v
 graph_examples.v
 graph_examples_properties.v
 graph_constructions.v
-kernel_logic.v
-kernel_graph_extensions.v
-graph_handshake.v
+graph_constructions_properties.v
