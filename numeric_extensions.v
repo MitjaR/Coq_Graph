@@ -106,6 +106,7 @@ Proof.
     + rewrite IHx.
       (* lia ne zna *)
       (* nia pa zna ze tu*)
+      (* seveda to je nelinearna enacba :) ... ne vem zakaj sem spregledal *)
       * nia.
       * omega.
 Qed.

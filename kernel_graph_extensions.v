@@ -6,7 +6,34 @@ Require Import kernel_numeric.
 Require Import kernel_graph.
 Require Import graph_examples.
 Require Import graph_constructions.
- 
+
+Definition graph_complement (G : Graph) : Graph.
+Proof.
+  refine {| V := (V G);
+            E := fun x y => x <> y  /\ not(E G x y); 
+         |}.
+  - intros x y.
+    destruct (Nat.eq_dec x y).
+    + right.
+      intro A.
+      destruct A.
+      auto.
+    + destruct (E_decidable G x y).
+      * right.
+        intro A.
+        destruct A.
+        auto.
+      * auto.
+  - intros x q A.
+    destruct A.
+    auto.
+  - intros x q y r.
+    pose (E_symmetric G).
+    intro A.
+    destruct A.
+    split; auto. (* spet primer ko auto zna omega pa ne*)
+Qed.
+
 Definition ordered_induced_subgraph (G : Graph) (n : nat) (p: n <= (V G)): Graph.
 (*Proof. (* kje je Proof. bolj smiselno? *)*)
   refine {| V := n;
@@ -69,31 +96,7 @@ Search (~ (_ /\ _) -> (_ \/ _)).
 Search (~(_ \/ _) -> (_ /\ _)).
 *)
 
-Definition graph_complement (G : Graph) : Graph.
-  refine {| V := (V G);
-            E := fun x y => x <> y  /\ not(E G x y); 
-         |}.
-  - intros x y.
-    destruct (Nat.eq_dec x y).
-    + right.
-      intro A.
-      destruct A.
-      auto.
-    + destruct (E_decidable G x y).
-      * right.
-        intro A.
-        destruct A.
-        auto.
-      * auto.
-  - intros x q A.
-    destruct A.
-    auto.
-  - intros x q y r.
-    pose (E_symmetric G).
-    intro A.
-    destruct A.
-    split; auto. (* spet primer ko auto zna omega pa ne*)
-Qed.
+
 
 (*
 Definition conected_graphB (G : Graph) :=

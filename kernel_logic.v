@@ -140,6 +140,16 @@ Proof.
 Qed.
 
 (*
+Theorem zanikanje_implikacije (A B : Prop):
+  (A -> B) <-> (~B -> ~A).
+Proof.
+  split; try tauto.
+  intro.
+  intro.
+  (* se ne da brez izkljucene tretje moznosti*)
+*)  
+
+(*
 Theorem law_of_excluded_middle_for_negated_exists (P: nat -> Prop) :
   ~(exists x, P x) \/ ~(~(exists x, P x)).
 Proof.
