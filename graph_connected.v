@@ -5,6 +5,7 @@ Require Import Psatz.
 Require Import kernel_graph.
 Require Import graph_examples.
 
+
 (* A walk in G from x to y. *)
 Record walk (G : Graph) (x y : nat) := {
   walk_intermediate : nat ; (* stevilo vmesnih vozlisc *)
@@ -19,43 +20,29 @@ Record walk (G : Graph) (x y : nat) := {
 Arguments walk_intermediate {_ _ _} _.
 Arguments walk_length {_ _ _} _.
 
-Record path_of_graph (G : Graph) (x y : nat) := {
-  path_intermediate : nat ; (* stevilo vmesnih vozlisc *)
-  path_length := S (S path_intermediate) ; (* stevilo vozlisc *)
-  path_func :> nat -> nat ;
-  path_in_graph : forall i, i < path_length -> path_func i < V G ;
-  path_connected : forall i, i < S path_intermediate -> G (path_func i) (path_func (S i)) ;
-  path_start : path_func 0 = x ;
-  path_end : path_func (S path_intermediate) = y;
-  path_unique : forall i, i < S path_intermediate -> forall j, j < i -> not (path_func i = path_func j) 
-}.
-
-Lemma path_is_walk (G : Graph) (x y : nat) : 
-  path_of_graph G x y -> walk G x y.
+Theorem mini_walk (G : Graph) (n : nat) (p : n > 0) (x y : nat) (Wxy : walk G x y):
+  walk_intermediate Wxy = n -> walk G x (walk_func G x y Wxy n).
 Proof.
-  intro Pxy.
-  simple refine {| walk_intermediate := path_intermediate _ _ _ Pxy;
-                   walk_func := path_func _ _ _ Pxy |}.
-  - apply path_in_graph.
-  - apply path_connected.
-  - apply path_start.
-  - apply path_end.
+  intro Wxyinl.
+  simple refine {| walk_intermediate := (n - 1) ;
+                   walk_func := (walk_func G x y Wxy) |}.
+  - intros i Ai.
+    apply walk_in_graph.
+    unfold walk_length.
+    rewrite Wxyinl.
+    omega.
+  - intros i Ai.
+    apply walk_connected.
+    rewrite Wxyinl.
+    omega.
+  - apply walk_start.
+  - replace (S (n - 1)) with n; auto.
+    omega.
 Qed.
+  
 
-(*
-Lemma if_walk_then_path_part (G : Graph) (x y : nat) (P : x < y) (Wxy : walk G x y): 
-  exists i, exists j, i < j < S (walk_intermediate Wxy) -> 
-  (walk_func G x y Wxy i = walk_func G x y Wxy j /\ forall ii, ii < i -> . 
-(* dvakrat injektivnost za vsako stran *)
-Proof.
-  intros P Wxy.
 
-(* ce lahko do nekam pridemo potem je do tja pot *)
-Lemma if_walk_then_path (G : Graph) (x y : nat) : 
-  walk G x y -> path_of_graph G x y.
-Proof.
-  intro Wxy.
-*)
+
 
 Definition connected (G : Graph) :=
   forall x y, x < G -> y < G -> x < y -> walk G x y.
@@ -147,8 +134,6 @@ Proof.
       apply walk_end.
 Defined.
 
-
-
 Lemma walk_symmetric (G : Graph) (x y : nat) :
   x < G -> y < G ->
   walk G x y -> walk G y x.
@@ -187,14 +172,6 @@ Proof.
   - intros i A.
     omega.
   - intros i A.
-    (* zakaj tega noce narediti???
-    replace ((Path n) ((fun i0 : nat => x + i0) i) ((fun i0 : nat => x + i0) (S i))) 
-      with ((Path n) (x + i) (x + (S i))).
-    *)
-    (* tega tudi ne.. misli da je to isto?? JA JE ISTO ampak skoda da ne naredi menjave..
-    assert (((Path n) (x + i) (x + (S i))) -> 
-      ((Path n) ((fun i0 : nat => x + i0) i) ((fun i0 : nat => x + i0) (S i)))).
-    *)
     simpl.
     omega.
   - auto. 
@@ -270,11 +247,216 @@ Proof.
   - apply walk_symmetric; auto.
 Qed.
 
+(* Search (_ = _). *)
+
+Theorem color_dec (col : nat -> bool) (x : nat):
+  {col x = false} + {col x = true}.
+Proof.
+  destruct (col x); auto.
+Qed.
 
 Definition idecomposable (G : Graph) :=
   forall col : nat -> bool, all x : G, all y : G,
   (col x = true -> col y = false ->
    some a : G, some b : G, (col a = true /\ col b = false /\ G a b)).
+
+Theorem change_location_simple1 (n : nat) :
+  forall col : nat -> bool,
+  (col 0 = true -> col n = false -> 
+  some a : n, (col a = true /\ col (S a) = false)).
+Proof.
+  intros col xCol yCol.
+  induction n.
+  {
+    rewrite yCol in xCol.
+    absurd (false = true); auto.
+  }
+  {
+    destruct (color_dec col n).
+    - assert (some a : n, (col a = true /\ col (S a) = false)).
+      + apply IHn; auto.
+      + destruct H.
+        exists x.
+        split.
+        * omega.
+        * apply H.
+    - exists n.
+      auto.
+  }
+Qed.
+
+Theorem change_location_simple2 (n : nat) :
+  forall col : nat -> bool,
+  (col 0 = false -> col n = true -> 
+  some a : n, (col a = false /\ col (S a) = true)).
+Proof.
+  intros col xCol yCol.
+  induction n.
+  {
+    rewrite yCol in xCol.
+    absurd (false = true); auto.
+  }
+  {
+    destruct (color_dec col n).
+    - exists n.
+      auto.
+    - assert (some a : n, (col a = false /\ col (S a) = true)).
+      + apply IHn; auto.
+      + destruct H.
+        exists x.
+        split.
+        * omega.
+        * apply H.
+  }
+Qed.
+
+Theorem change_location_simple1x (x n : nat) (Ax : x < n):
+  forall col : nat -> bool,
+  (col x = true -> col n = false -> 
+  some a : n, (x <= a /\ col a = true /\ col (S a) = false)).
+Proof.
+  intros col xCol yCol.
+  induction n.
+  {
+    omega.
+  }
+  {
+    destruct (lt_eq_lt_dec x n) as [[H1|H2]|H3].
+    {
+      destruct (color_dec col n).
+      - assert (some a : n, (x <= a /\ col a = true /\ col (S a) = false)).
+        + apply IHn; auto.
+        + destruct H.
+          exists x0.
+          split.
+          * omega.
+          * apply H.
+      - exists n.
+        split; auto.
+        split; auto.
+        omega.
+    }
+    {
+      exists x.
+      replace x with n in *.
+      auto.
+    }
+    {
+      omega.
+    }
+  }
+Qed.
+
+Theorem change_location_simple2x (x n : nat) (Ax : x < n):
+  forall col : nat -> bool,
+  (col x = false -> col n = true -> 
+  some a : n, (x <= a /\ col a = false /\ col (S a) = true)).
+Proof.
+  intros col xCol yCol.
+  induction n.
+  {
+    omega.
+  }
+  {
+    destruct (lt_eq_lt_dec x n) as [[H1|H2]|H3].
+    {
+      destruct (color_dec col n).
+      - exists n.
+        split; auto.
+        split; auto.
+        omega.
+      - assert (some a : n, (x <= a /\ col a = false /\ col (S a) = true)) as H.
+        + apply IHn; auto.
+        + destruct H.
+          exists x0.
+          split.
+          * omega.
+          * apply H.
+    }
+    {
+      exists x.
+      replace x with n in *.
+      auto.
+    }
+    {
+      omega.
+    }
+  }
+Qed.
+
+Theorem change_location (n : nat): 
+  forall col : nat -> bool, all x : n, all y : n,
+  (col x = true -> col y = false -> 
+   some a : (n - 1), (
+  (col a = true /\ col (S a) = false) \/ 
+  (col a = false /\ col (S a) = true))).
+Proof.
+  induction n.
+  {
+    intros col x Ax y Ay xCol yCol.
+    omega.
+  }
+  {
+    intros col x Ax y Ay xCol yCol.
+    destruct (lt_eq_lt_dec x y) as [[H1|H2]|H3].
+    - pose (change_location_simple1x x y H1 col xCol yCol) as CLS1x.
+      destruct CLS1x as [a H].
+      destruct H as [Aay [Axa [aCol saCol]]].
+      exists a.
+      split.
+      + omega.
+      + auto.
+    - replace x with y in *.
+      rewrite yCol in xCol.
+      absurd (false = true); auto.
+    - pose (change_location_simple2x y x H3 col yCol xCol) as CLS2x.
+      destruct CLS2x as [a [Aay [Axa [aCol saCol]]]].
+      exists a.
+      split.
+      + omega.
+      + auto.
+  }
+Qed.
+
+Theorem change_location_function (n : nat) (An : n > 1): 
+  forall col : nat -> bool, (forall f : nat -> nat,
+  col (f 0) = true -> col (f (n-1)) = false -> 
+   some a : (n - 1), (
+  (col (f a) = true /\ col (f (S a)) = false) \/ 
+  (col (f a) = false /\ col (f (S a)) = true))).
+Proof.
+  intros col f.
+  apply (change_location n (fun x => col (f x))); omega.
+Qed.
+
+
+Arguments walk_func {_ _ _} _ _.
+
+Theorem walk_idecomposable 
+  (G : Graph) (col : nat -> bool) (x y n : nat) 
+  (An : n > 1) (Wxy : walk G x y) :
+  walk_length Wxy = n -> 
+  (col x = true -> col y = false -> 
+   some a : (n - 1), (
+  (col ((walk_func Wxy) a) = true /\ col ((walk_func Wxy) (S a)) = false) \/ 
+  (col ((walk_func Wxy) a) = false /\ col ((walk_func Wxy) (S a)) = true))).
+Proof.
+  intros Wxylen xCol yCol.
+  apply change_location_function.
+  - assumption.
+  - replace x with (walk_func Wxy 0) in xCol.
+    + assumption.
+    + apply walk_start.
+  - replace y with (walk_func Wxy (n - 1)) in yCol.
+    + assumption.
+    + replace (n - 1) with (S (walk_intermediate Wxy)).
+      * apply walk_end.
+      * rewrite <- Wxylen.
+        unfold walk_length.
+        omega.
+Qed.
+
+
 
 Theorem connected_then_idecomposable (G : Graph) : 
   connected G -> idecomposable G.
@@ -282,7 +464,486 @@ Proof.
   unfold connected.
   intro Conn.
   unfold idecomposable.
+  intros col x xA y yA xCol yCol.
+  assert (walk G x y) as Wxy.
+  {
+    destruct (lt_eq_lt_dec x y) as [[H1|H2]|H3].
+    - apply Conn; auto.
+    - replace y with x in yCol.
+      absurd (col x = true); auto.
+      rewrite yCol.
+      auto.
+    - apply walk_symmetric; auto.
+  }
+  {
+    assert (some a : (walk_length Wxy -1), (
+      (col ((walk_func Wxy) a) = true /\ col ((walk_func Wxy) (S a)) = false) \/ 
+      (col ((walk_func Wxy) a) = false /\ col ((walk_func Wxy) (S a)) = true))) 
+      as H.
+    {
+      apply walk_idecomposable.
+      - unfold walk_length.
+        omega.
+      - auto.
+      - assumption.
+      - assumption.
+    }
+    {
+      destruct H as [q [Aq [[H0 H1]|[H2 H3]]]].
+      {
+        exists (Wxy q).
+        split.
+        - apply walk_in_graph.
+          omega.
+        - exists (Wxy (S q)).
+          split.
+          + apply walk_in_graph.
+            omega.
+          + split; auto; split; auto.
+            apply walk_connected.
+            unfold walk_length in Aq.
+            omega.
+      }
+      {
+        exists (Wxy (S q)).
+        split.
+        - apply walk_in_graph.
+          omega.
+        - exists (Wxy q).
+          split.
+          + apply walk_in_graph.
+            omega.
+          + split; auto; split; auto.
+            apply (E_symmetric G).
+            * apply walk_in_graph.
+              omega.
+            * apply walk_in_graph.
+              omega.
+            * apply walk_connected.
+              unfold walk_length in Aq.
+              omega.
+      }
+    }
+  }
+Qed.
+
+
+
+
+Definition increasing_connected_graph (G : Graph) :=
+  (forall x : nat, (0 < x < (V G) -> some y : x, (E G x y))).
+
+(*
+Theorem increasing_connected_then_connected (G : Graph) :
+  increasing_connected_graph G -> connectedA G.
+Proof.
+  unfold increasing_connected_graph.
+  intro ICG.
+  unfold connectedA.
+  intros x Ax.
+  pose (ICG x Ax) as H.
+  destruct H.
+*)
+
+Definition idecomposableA (G : Graph) :=
+  all x : G, all y : G, forall col : nat -> bool,
+  (col x = true -> col y = false ->
+   some a : G, some b : G, (col a = true /\ col b = false /\ G a b)).
+
+Theorem idecomposable_then_idecomposableA (G : Graph) : 
+  idecomposable G -> idecomposableA G.
+Proof.
+  unfold idecomposable.
+  intro Idec.
+  unfold idecomposableA.
+  intros x Ax y Ay col.
+  apply Idec; omega.
+Qed.
+
+
+
+
+Theorem idecomposableA_then_someone_to_zero (G : Graph) (y : nat): 
+  idecomposableA G -> 
+  0 < y < G -> 
+  some x : V G, G 0 x.
+Proof.
+  unfold idecomposableA.
+  intros Idec H.
+  assert (0 < G) as A0. omega.
+  assert (y < G) as Ay. omega.
+  set (col := (fun i => match i with
+                 | 0 => true
+                 | _ => false
+               end)).
+  assert (col 0 = true) as Col0. auto.
+  assert (y <> 0). omega.
+  assert (exists y0 : nat, y = S y0). exists (y - 1). omega.
+  destruct H1.
+  assert (col y = false) as yCol. rewrite H1. auto.
+  pose (Idec 0 A0 y Ay col Col0 yCol) as Idec0y.
+  destruct Idec0y as [a [Aa [b [Bb K]]]].
+  destruct (Nat.eq_dec 0 a).
+  - exists b.
+    rewrite <- e in K.
+    split; auto.
+    apply K.
+  - absurd (col a = true).
+    + assert (a > 0).
+      * omega.
+      * assert (exists a0 : nat, a = S a0). exists (a - 1). omega.
+        destruct H3.
+        assert (col a = false). rewrite H3. auto.
+        rewrite H4. auto.
+    + apply K.
+Qed.
+
+(*
+Theorem idecomposableA_then_someone_to_zero (G : Graph) : 
+  idecomposableA G -> 0 < V G -> some x : V G, G 0 x.
+Proof.
+  unfold idecomposableA.
+  intros Idec Ag.
+  destruct (lt_eq_lt_dec 0 (V G - 1)) as [[H1|H2]|H3].
+  - pose (Idec 0 Ag).
+    
+  - admit.
+  - omega.
+  *)
+
+
+Theorem idecomposableA_then_connectedA (G : Graph) : 
+  idecomposableA G -> connectedA G.
+Proof.
+  unfold idecomposableA.
+  intro Idec.
+  unfold connectedA.
+  intros x Ax.
+  assert (0 < V G) as B0.
+  {
+    omega.
+  }
+  {
+    assert (x < V G) as Bx.
+    - omega.
+    - pose (Idec 0 B0 x Bx).
+  }
+
+
+
+Theorem idecomposable_then_connected (G : Graph) : 
+  idecomposable G -> connected G.
+Proof.
+  unfold idecomposable.
+  intro Idec.
+  unfold connected.
+  intros x y Ax Ay Axy.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(**
+
+Theorem connected_then_idecomposable (G : Graph) : 
+  connected G -> idecomposable G.
+Proof.
+  unfold connected.
+  intro Conn.
+  unfold idecomposable.
+  intros col x xA y yA xCol yCol.
+  assert (walk G x y) as Wxy.
+  {
+    destruct (lt_eq_lt_dec x y) as [[H1|H2]|H3].
+    - apply Conn; auto.
+    - replace y with x in yCol.
+      absurd (col x = true); auto.
+      rewrite yCol.
+      auto.
+    - apply walk_symmetric; auto.
+  }
+  {
+    set (qqq := walk_intermediate Wxy).
+    induction (walk_intermediate Wxy).
+    {
+    exists x.
+    split; auto.
+    exists y.
+    split; auto.
+    split; auto.
+    split; auto.
+    assert (walk_func Wxy 0 = x).
+    - apply walk_start.
+    - assert (walk_func Wxy (S (walk_intermediate Wxy)) = y).
+      + apply walk_end.
+      + assert (walk_intermediate Wxy = 0) as IH0.
+        * replace (walk_intermediate Wxy) with qqq; auto.
+          admit.
+        * rewrite IH0 in H0.
+          rewrite <- H. (* to pomeni da naredis revrite H iz druge strani*)
+          rewrite <- H0.
+          apply walk_connected.
+          rewrite IH0.
+          auto.
+    }
+    {
+
+    }
+  }
 Admitted.
 
-Theorem idecomposable_then_connected (G : Graph) : idecomposable G -> connected G.
-Admitted.
+
+
+
+
+
+
+
+
+
+
+  (col : nat -> bool) (x y : nat) 
+  (Ax : x < (V G)) (Ay : y < (V G))
+  (xCol : col x = true) (yCol : col y = false) (Wxy : walk G x y):
+  (walk_intermediate Wxy = n) ->
+  (some i : (walk_length Wxy), 
+  ((col (walk_func Wxy i) = true /\ col (walk_func Wxy (S i)) = false) \/
+  (col (walk_func Wxy i) = false /\ col (walk_func Wxy (S i)) = true))).
+Proof.
+  revert Wxy.
+  revert yCol xCol Ay Ax.
+  revert y.
+  unfold walk_length.
+  induction n.
+
+Theorem walk_idecomposable (G : Graph) (n : nat) 
+  (col : nat -> bool) (x y : nat) 
+  (Ax : x < (V G)) (Ay : y < (V G))
+  (xCol : col x = true) (yCol : col y = false) (Wxy : walk G x y):
+  (walk_intermediate Wxy = n) ->
+  (some i : (walk_length Wxy), 
+  ((col (walk_func Wxy i) = true /\ col (walk_func Wxy (S i)) = false) \/
+  (col (walk_func Wxy i) = false /\ col (walk_func Wxy (S i)) = true))).
+Proof.
+  revert Wxy.
+  revert yCol xCol Ay Ax.
+  revert y.
+  unfold walk_length.
+  induction n.
+  
+
+Theorem walk_idecomposable (G : Graph) (n : nat) 
+  (col : nat -> bool) (x y : nat) 
+  (Ax : x < (V G)) (Ay : y < (V G))
+  (AWxy : walk_func Wxy x < walk_func Wxy y)
+  (xCol : col x = true) (yCol : col y = false) (Wxy : walk G x y):
+  (walk_intermediate Wxy = n) ->
+  (some i : (walk_length Wxy), 
+  (col (walk_func Wxy i) = true /\ col (walk_func Wxy (S i)) = false)).
+Proof.
+  revert Wxy.
+  revert yCol xCol Ay Ax.
+  revert y.
+  unfold walk_length.
+  induction n.
+  {
+    intros y yCol xCol Ay Ax.
+    intro Wxy.
+    intro Wxyinl.
+    rewrite Wxyinl.
+    exists 0.
+    rewrite walk_start.
+    split; auto.
+    replace 1 with (S (walk_intermediate Wxy)).
+    - split; auto.
+      rewrite walk_end; auto.
+    - rewrite Wxyinl; auto.
+  }
+  {
+    intros y yCol xCol Ay Ax.
+    intro Wxy.
+    intro Wxyinl.
+    rewrite Wxyinl.
+    destruct (color_dec col (walk_func Wxy (S n))) as [yPredF|yPredT].
+    - (* set (yPred := walk_func Wxy (S (S n))). *)
+      assert (walk G x (walk_func Wxy (S n))) as mWxy.
+      + {
+          simple refine {| walk_intermediate := n;
+                           walk_func := (walk_func Wxy) |}.
+          - intros i Ai.
+            apply walk_in_graph.
+            unfold walk_length.
+            rewrite Wxyinl.
+            omega.
+          - intros i Ai.
+            apply walk_connected.
+            rewrite Wxyinl.
+            omega.
+          - apply walk_start.
+          - omega.
+        }
+        (*
+        apply mini_walk; auto.
+        omega.
+        *)
+      + assert (walk_intermediate mWxy = n) as mWxinl.
+        {
+          admit.
+        }
+        {
+          assert (some i : S (S (walk_intermediate mWxy)),
+                 (col (mWxy i) = true /\ col (mWxy (S i)) = false)).
+          * apply IHn; auto.
+            {
+              apply walk_in_graph.
+              unfold walk_length.
+              rewrite Wxyinl.
+              omega.
+            }
+            {
+              destruct (Nat.eq_dec x (walk_func Wxy (S n))).
+              - replace (Wxy (S n)) with x in *.
+                rewrite yPredF in xCol.
+                absurd (false = true); auto.
+              - assert (walk_func Wxy (S (S n)) = y).
+                + rewrite <- Wxyinl.
+                  apply walk_end.
+                + rewrite <- H in Ax.
+                  destruct (lt_eq_lt_dec x (Wxy (S n))) as [[H1|H2]|H3]; auto.
+                  * absurd (x = Wxy (S n)); auto.
+                  * (admited****)
+(**
+            }
+          * rewrite mWxinl in H.
+            destruct H as [i [Ai [j [Aj H0]]]].
+            exists i.
+            split; auto.
+            exists j.
+            split; auto.
+            assert (walk_func mWxy = walk_func Wxy) as same_func.
+            {
+              admit.
+            }
+            {
+              rewrite same_func in H0.
+              auto.
+            }
+        }
+    -
+  }
+
+
+*)
+(*
+Theorem walk_idecomposable (G : Graph) (*(n : nat)*) (col : nat -> bool) (x y : nat) 
+  (Ax : x < (V G)) (Ay : y < (V G)) 
+  (Wxy : walk G x y)
+  (xCol : col x = true) (yCol : col y = false): 
+  (*n = walk_intermediate Wxy ->*)
+  (some i : (walk_length Wxy), 
+  (some j : (walk_length Wxy), 
+  (col (walk_func Wxy i) = true /\ col (walk_func Wxy j) = false))).
+Proof.
+  unfold walk_length.
+  (* pose (walk_end G x y Wxy). *)
+  (**intro An.**)
+  induction (walk_intermediate Wxy).
+  {
+    exists 0.
+    split; auto.
+    rewrite walk_start.
+    exists 1.
+    split; auto.
+    assert (walk_func Wxy 1 = y) as Wf1y.
+    - replace 1 with (S (walk_intermediate Wxy)).
+      + apply (walk_end G x y Wxy).
+      + unfold walk_intermediate.
+        admit.
+    - rewrite Wf1y.
+      auto.
+  }
+  {
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+Theorem change_location_functionB (n : nat) (f : nat -> nat): 
+  forall col : nat -> bool, all x : n, all y : n,
+  (col (f x) = true -> col (f y) = false -> 
+   some a : n, (
+  (col (f a) = true /\ col (f (S a)) = false) \/ 
+  (col (f a) = false /\ col (f (S a)) = true))).
+Proof.
+  intro col.
+  apply (change_location n (fun x => col (f x))).
+Qed.
+
+Theorem change_location_functionA (n : nat) : 
+  forall col : nat -> bool, all x : n, all y : n,
+  (forall f : nat -> nat,
+  (col (f x) = true -> col (f y) = false -> 
+   some a : n, (
+  (col (f a) = true /\ col (f (S a)) = false) \/ 
+  (col (f a) = false /\ col (f (S a)) = true)))).
+Proof.
+  intros col x Ax y Ay f.
+  apply change_location_function; auto.
+Qed.
+
+
+
+
+
+(* Search (_ < _).*)
+
+(* Search ((_ < _) -> (_ < _) -> (_ < _)). *)
+
+Arguments walk_func {_ _ _} _ _.
+
+Theorem walk_idecomposable 
+  (G : Graph) (col : nat -> bool) (x y n : nat)
+  (Ax : x < n) (Ay : y < n) (Wxy : walk G x y) :
+  walk_length Wxy = n -> 
+  (col ((walk_func Wxy) x) = true -> col ((walk_func Wxy) y) = false -> 
+   some a : n, (
+  (col ((walk_func Wxy) a) = true /\ col ((walk_func Wxy) (S a)) = false) \/ 
+  (col ((walk_func Wxy) a) = false /\ col ((walk_func Wxy) (S a)) = true))).
+Proof.
+  intro Wxylen.
+  apply change_location_functionA; auto.
+Qed.
+
+Theorem walk_idecomposableA 
+  (G : Graph) (col : nat -> bool) (x y n : nat) (Wxy : walk G x y) :
+  walk_length Wxy = n -> 
+  (col x = true -> col y = false -> 
+   some a : n, (
+  (col ((walk_func Wxy) a) = true /\ col ((walk_func Wxy) (S a)) = false) \/ 
+  (col ((walk_func Wxy) a) = false /\ col ((walk_func Wxy) (S a)) = true))).
+Proof.
+  intros Wxylen xCol yCol.
+  replace x with (walk_func Wxy 0) in xCol.
+  replace y with (walk_func Wxy (S (walk_intermediate Wxy))) in yCol.
+  - pose (change_location_functionA (walk_length Wxy) col (Wxy 0)).
+Qed.
+**)
