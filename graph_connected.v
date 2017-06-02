@@ -4,6 +4,7 @@ Require Import Psatz.
 
 Require Import kernel_graph.
 Require Import graph_examples.
+Require Import kernel_numeric.
 
 
 (* A walk in G from x to y. *)
@@ -249,6 +250,9 @@ Qed.
 
 (* Search (_ = _). *)
 
+
+
+
 Theorem color_dec (col : nat -> bool) (x : nat):
   {col x = false} + {col x = true}.
 Proof.
@@ -273,13 +277,11 @@ Proof.
   }
   {
     destruct (color_dec col n).
-    - assert (some a : n, (col a = true /\ col (S a) = false)).
-      + apply IHn; auto.
-      + destruct H.
-        exists x.
-        split.
-        * omega.
-        * apply H.
+    - destruct IHn as [a [Aa H]]; auto.
+      exists a.
+      split.
+      + omega.
+      + apply H.
     - exists n.
       auto.
   }
@@ -300,13 +302,11 @@ Proof.
     destruct (color_dec col n).
     - exists n.
       auto.
-    - assert (some a : n, (col a = false /\ col (S a) = true)).
-      + apply IHn; auto.
-      + destruct H.
-        exists x.
-        split.
-        * omega.
-        * apply H.
+    - destruct IHn as [a [Aa H]]; auto.
+      exists a.
+      split.
+      * omega.
+      * apply H.
   }
 Qed.
 
@@ -324,13 +324,11 @@ Proof.
     destruct (lt_eq_lt_dec x n) as [[H1|H2]|H3].
     {
       destruct (color_dec col n).
-      - assert (some a : n, (x <= a /\ col a = true /\ col (S a) = false)).
-        + apply IHn; auto.
-        + destruct H.
-          exists x0.
-          split.
-          * omega.
-          * apply H.
+      - destruct IHn as [a [Aa H]]; auto.
+        exists a.
+        split.
+        * omega.
+        * apply H.
       - exists n.
         split; auto.
         split; auto.
@@ -365,13 +363,11 @@ Proof.
         split; auto.
         split; auto.
         omega.
-      - assert (some a : n, (x <= a /\ col a = false /\ col (S a) = true)) as H.
-        + apply IHn; auto.
-        + destruct H.
-          exists x0.
-          split.
-          * omega.
-          * apply H.
+      - destruct IHn as [a [Aa H]]; auto.
+        exists a.
+        split.
+        * omega.
+        * apply H.
     }
     {
       exists x.
@@ -598,24 +594,114 @@ Proof.
     + apply K.
 Qed.
 
-(*
-Theorem idecomposableA_then_someone_to_zero (G : Graph) : 
-  idecomposableA G -> 0 < V G -> some x : V G, G 0 x.
+
+
+Record connected_subgraph (G : Graph) (n : nat) := {
+  cs_size := n ;
+  cs_col : nat -> bool ;
+  cs_size_proof : sum' (V G) (fun x => if cs_col x then 1 else 0) = cs_size ;
+  cs_connected_proof : all x : (V G), all y : (V G), (
+    cs_col x = true-> cs_col y = true -> walk G x y)
+}.
+
+Theorem sum_max_simple (n : nat) (f : nat -> bool) :
+  sum' n (fun x => if f x then 1 else 0) <= n.
 Proof.
-  unfold idecomposableA.
-  intros Idec Ag.
-  destruct (lt_eq_lt_dec 0 (V G - 1)) as [[H1|H2]|H3].
-  - pose (Idec 0 Ag).
-    
-  - admit.
-  - omega.
+  induction n.
+  - auto.
+  - rewrite sum'_S.
+    assert ((if f n then 1 else 0) <= 1).
+    + destruct (f n); omega.
+    + omega.
+Qed.
+
+Theorem sum_end (n : nat) (f : nat -> bool) 
+  (P : sum' n (fun x => if f x then 1 else 0) = n) :
+  all y : n, ((fun x => if f x then 1 else 0) y = 1).
+Proof.
+  induction n.
+  {
+    intros y Ay.
+    omega.
+  }
+  {
+    rewrite sum'_S in P.
+    destruct (color_dec f n).
+    - destruct (f n).
+      + absurd (false = true); auto.
+      + pose (sum_max_simple n f).
+        absurd (true = true); omega. (* ni v cilju ampak predpostavke *)
+    - destruct (f n) in P.
+      + assert (sum' n (fun x : nat => if f x then 1 else 0) = n).
+        * omega.
+        * assert (all y : n, ((if f y then 1 else 0) = 1)) as HH; auto.
+          intros y Ay.
+          destruct (Nat.eq_dec y n).
+          {
+            destruct (color_dec f y).
+            - rewrite e0 in e1. rewrite e in e1. absurd (false = true); auto.
+            - destruct (f y); auto; absurd (false = true); auto.
+          }
+          {
+            apply HH.
+            omega.
+          }
+      + absurd (0 + sum' n (fun x : nat => if f x then 1 else 0) = S n); auto.
+        pose (sum_max_simple n f).
+        omega.
+  }
+Qed.
+
+Theorem sum_end_f (n : nat) (f : nat -> bool) 
+  (P : sum' n (fun x => if f x then 1 else 0) = n) :
+  all y : n, (f y = true).
+Proof.
+  intros y Ay.
+  pose (sum_end n f P y Ay).
+  assert ((if f y then 1 else 0) = 1).
+  - apply e.
+  - destruct (f y); auto.
+    omega.
+Qed.
+
+Theorem conected_subgraph_connected (G : Graph):
+  connected_subgraph G (V G) -> connected G.
+Proof.
+  intro ConnSub.
+  unfold connected.
+  intros x y Ax Ay Axy.
+  pose (cs_connected_proof G (V G) ConnSub x Ax y Ay) as H.
+  pose (cs_size_proof G (V G) ConnSub).
+  apply H.
+  - apply (sum_end_f (V G)).
+    + unfold cs_size in e; auto.
+    + apply Ax.
+  - apply (sum_end_f (V G)).
+    + unfold cs_size in e; auto.
+    + apply Ay.
+Qed.
+
+Theorem conected_subgraph_extend (G : Graph) (n : nat) (P : 1 + n < (V G)):
+  idecomposable G -> connected_subgraph G n -> connected_subgraph G (1 + n).
+Proof.
+  unfold idecomposable.
+  intros Idec ConnSub.
+  set (col := (cs_col G n ConnSub)).
+  (* sedaj potrebujemo nek x barve true in nek y barve false 
+     potem poiscemo vozlisce b in dodamo novo barvo col' 
+     ki je enaka povsod razen v vozliscu b je true
+     tako smo dobili vecji povezan podgarf
   *)
+  pose (Idec col).
+
+Theorem idecomposable_extend (G : Graph) : 
+  idecomposable G -> connectedA G.
 
 
-Theorem idecomposableA_then_connectedA (G : Graph) : 
-  idecomposableA G -> connectedA G.
+Theorem idecomposable_then_connectedA (G : Graph) : 
+  idecomposable G -> connectedA G.
 Proof.
-  unfold idecomposableA.
+  unfold idecomposable.
   intro Idec.
   unfold connectedA.
   intros x Ax.
@@ -947,3 +1033,16 @@ Proof.
   - pose (change_location_functionA (walk_length Wxy) col (Wxy 0)).
 Qed.
 **)
+
+(*
+Theorem idecomposableA_then_someone_to_zero (G : Graph) : 
+  idecomposableA G -> 0 < V G -> some x : V G, G 0 x.
+Proof.
+  unfold idecomposableA.
+  intros Idec Ag.
+  destruct (lt_eq_lt_dec 0 (V G - 1)) as [[H1|H2]|H3].
+  - pose (Idec 0 Ag).
+    
+  - admit.
+  - omega.
+  *)
